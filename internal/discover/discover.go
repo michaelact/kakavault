@@ -40,10 +40,6 @@ func Find(ctx context.Context, lister Lister, namespacePattern, secretNamePatter
 	if err != nil {
 		return nil, fmt.Errorf("compile namespace_pattern: %w", err)
 	}
-	secretRe, err := regexp.Compile(secretNamePattern)
-	if err != nil {
-		return nil, fmt.Errorf("compile secret_name_pattern: %w", err)
-	}
 
 	namespaces, err := lister.ListNamespaces(ctx)
 	if err != nil {
@@ -56,15 +52,35 @@ func Find(ctx context.Context, lister Lister, namespacePattern, secretNamePatter
 			continue
 		}
 
-		secrets, err := lister.ListSecrets(ctx, ns)
+		t, err := FindInNamespace(ctx, lister, ns, secretNamePattern)
 		if err != nil {
-			return nil, fmt.Errorf("list secrets in %s: %w", ns, err)
+			return nil, err
 		}
+		targets = append(targets, t...)
+	}
 
-		for _, secretName := range secrets {
-			if secretRe.MatchString(secretName) {
-				targets = append(targets, Target{Namespace: ns, SecretName: secretName})
-			}
+	return targets, nil
+}
+
+// FindInNamespace lists namespace's Secrets and returns the ones whose
+// name matches secretNamePattern. Unlike Find, the namespace itself is
+// taken as given — no namespace_pattern check, no system-namespace skip
+// (the caller already decided this specific namespace is in scope).
+func FindInNamespace(ctx context.Context, lister Lister, namespace, secretNamePattern string) ([]Target, error) {
+	secretRe, err := regexp.Compile(secretNamePattern)
+	if err != nil {
+		return nil, fmt.Errorf("compile secret_name_pattern: %w", err)
+	}
+
+	secrets, err := lister.ListSecrets(ctx, namespace)
+	if err != nil {
+		return nil, fmt.Errorf("list secrets in %s: %w", namespace, err)
+	}
+
+	var targets []Target
+	for _, secretName := range secrets {
+		if secretRe.MatchString(secretName) {
+			targets = append(targets, Target{Namespace: namespace, SecretName: secretName})
 		}
 	}
 

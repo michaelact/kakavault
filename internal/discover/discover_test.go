@@ -146,3 +146,53 @@ func TestFind_BadPattern(t *testing.T) {
 		t.Fatal("Find() error = nil, want an error for an invalid namespace_pattern regex")
 	}
 }
+
+func TestFindInNamespace_MatchesSecretPattern(t *testing.T) {
+	lister := &fakeLister{
+		secretsByNS: map[string][]string{
+			"myrepo-staging": {"backend-secret-variables", "default-token-abc", "ui-secret-variables"},
+		},
+	}
+
+	got, err := FindInNamespace(context.Background(), lister, "myrepo-staging", secretPattern)
+	if err != nil {
+		t.Fatalf("FindInNamespace() error = %v", err)
+	}
+
+	sort.Slice(got, func(i, j int) bool { return got[i].SecretName < got[j].SecretName })
+
+	if len(got) != 2 {
+		t.Fatalf("len(FindInNamespace()) = %d, want 2; got %+v", len(got), got)
+	}
+	if got[0].SecretName != "backend-secret-variables" || got[0].Namespace != "myrepo-staging" {
+		t.Errorf("got[0] = %+v", got[0])
+	}
+	if got[1].SecretName != "ui-secret-variables" || got[1].Namespace != "myrepo-staging" {
+		t.Errorf("got[1] = %+v", got[1])
+	}
+}
+
+func TestFindInNamespace_NoMatches(t *testing.T) {
+	lister := &fakeLister{
+		secretsByNS: map[string][]string{
+			"myrepo-staging": {"default-token-abc"},
+		},
+	}
+
+	got, err := FindInNamespace(context.Background(), lister, "myrepo-staging", secretPattern)
+	if err != nil {
+		t.Fatalf("FindInNamespace() error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("len(FindInNamespace()) = %d, want 0", len(got))
+	}
+}
+
+func TestFindInNamespace_BadPattern(t *testing.T) {
+	lister := &fakeLister{}
+
+	_, err := FindInNamespace(context.Background(), lister, "myrepo-staging", "(unclosed")
+	if err == nil {
+		t.Fatal("FindInNamespace() error = nil, want an error for an invalid secret_name_pattern regex")
+	}
+}
