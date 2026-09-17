@@ -1,0 +1,31 @@
+# Example k2v config. Copy this, then adjust the two patterns and the
+# classification rules to match your own naming conventions.
+
+# Named capture groups "repo" and "environment" are required.
+namespace_pattern: "^(?P<repo>.+)-(?P<environment>[a-z0-9]+)$"
+
+# Named capture group "application" is required.
+secret_name_pattern: "^(?P<application>.+)-secret-variables$"
+
+vault:
+  mount: default
+  kv_version: 2
+
+classification:
+  # Evaluated in order — first match wins. A pattern of ".*" as the last
+  # rule acts as a default/catch-all.
+  rules:
+    - pattern: "^(OPENAI|ANTHROPIC|AWS|GCP|AZURE)_"
+      classification: third-party
+    - pattern: "^(POSTGRES|REDIS|MYSQL|MONGO)_"
+      classification: third-party
+    - pattern: "(_DB_URL|_DATABASE_URL)$"
+      classification: third-party
+    - pattern: ".*"
+      classification: internal
+
+  # Exact key-name matches here always win over the rules above, for the
+  # cases your rules get wrong (a key that ends in _API_KEY but is
+  # actually an internal service-to-service token, for example).
+  overrides:
+    ADMIN_API_KEY: internal

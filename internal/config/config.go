@@ -30,10 +30,10 @@ type VaultConfig struct {
 
 // Config is the full k2v configuration, loaded from a single YAML file.
 type Config struct {
-	NamespacePattern  string          `yaml:"namespace_pattern"`
-	SecretNamePattern string          `yaml:"secret_name_pattern"`
-	Vault             VaultConfig     `yaml:"vault"`
-	Classification    Classification  `yaml:"classification"`
+	NamespacePattern  string         `yaml:"namespace_pattern"`
+	SecretNamePattern string         `yaml:"secret_name_pattern"`
+	Vault             VaultConfig    `yaml:"vault"`
+	Classification    Classification `yaml:"classification"`
 }
 
 // Load reads and parses the YAML config file at path. It does not validate
