@@ -29,6 +29,13 @@ k2v migrate --namespace myrepo-staging --secret backend-secret-variables --confi
 
 # Actually write to Vault, then read back and verify each key
 k2v migrate --namespace myrepo-staging --secret backend-secret-variables --config config.yaml --apply
+
+# Or --all: discover every namespace/Secret pair matching the config's
+# namespace_pattern/secret_name_pattern and migrate each one. Skips
+# kube-system/kube-public/kube-node-lease. Mutually exclusive with
+# --namespace/--secret.
+k2v migrate --all --config config.yaml
+k2v migrate --all --config config.yaml --apply
 ```
 
 See `examples/config.example.yaml` for a config template.
