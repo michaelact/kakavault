@@ -22,6 +22,7 @@ func main() {
 func run(args []string) int {
 	if len(args) == 0 || args[0] != "migrate" {
 		fmt.Fprintln(os.Stderr, "usage: k2v migrate --namespace <ns> --secret <name> --config <path> [--apply] [--kubeconfig <path>]")
+		fmt.Fprintln(os.Stderr, "   or: k2v migrate --all --config <path> [--apply] [--kubeconfig <path>]")
 		return 1
 	}
 
@@ -30,11 +31,20 @@ func run(args []string) int {
 	secretName := fs.String("secret", "", "Name of the Kubernetes Secret to migrate")
 	configPath := fs.String("config", "", "Path to the k2v config YAML file")
 	apply := fs.Bool("apply", false, "Perform the writes (default is dry-run)")
+	all := fs.Bool("all", false, "Discover every namespace/Secret pair matching the config's patterns, instead of a single --namespace/--secret")
 	kubeconfig := fs.String("kubeconfig", "", "Path to kubeconfig (defaults to ~/.kube/config)")
 	fs.Parse(args[1:])
 
-	if *namespace == "" || *secretName == "" || *configPath == "" {
-		fmt.Fprintln(os.Stderr, "error: --namespace, --secret, and --config are all required")
+	if *configPath == "" {
+		fmt.Fprintln(os.Stderr, "error: --config is required")
+		return 1
+	}
+	if *all && (*namespace != "" || *secretName != "") {
+		fmt.Fprintln(os.Stderr, "error: --all can't be combined with --namespace/--secret")
+		return 1
+	}
+	if !*all && (*namespace == "" || *secretName == "") {
+		fmt.Fprintln(os.Stderr, "error: --namespace and --secret are required unless --all is set")
 		return 1
 	}
 
@@ -61,6 +71,7 @@ func run(args []string) int {
 		secretName: *secretName,
 		configPath: *configPath,
 		apply:      *apply,
+		all:        *all,
 	}, k8sClient, vaultWriter, os.Stdout, os.Stderr)
 }
 
