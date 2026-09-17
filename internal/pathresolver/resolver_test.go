@@ -56,8 +56,8 @@ func TestResolve_BadNamespacePattern(t *testing.T) {
 }
 
 func TestBuildPath(t *testing.T) {
-	got := BuildPath("myrepo", "staging", "backend", "internal", "ENCRYPTION_KEY")
-	want := "myrepo/staging/backend/internal/ENCRYPTION_KEY"
+	got := BuildPath("myrepo", "staging", "backend", "internal")
+	want := "myrepo/staging/backend/internal"
 	if got != want {
 		t.Errorf("BuildPath() = %q, want %q", got, want)
 	}

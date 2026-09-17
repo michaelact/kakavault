@@ -1,6 +1,6 @@
 // Package pathresolver parses a namespace name and Secret name into their
 // repo/environment/application components, and builds the Vault KV path
-// for a given key once classified.
+// for a classification tier once classified.
 package pathresolver
 
 import (
@@ -67,8 +67,10 @@ func extractTwo(re *regexp.Regexp, input, group1, group2 string) (string, string
 	return match[idx1], match[idx2], true
 }
 
-// BuildPath returns the Vault KV subpath for one key, WITHOUT a mount
-// prefix — the caller (vaultwriter) owns and prepends the mount.
-func BuildPath(repo, environment, application, classification, key string) string {
-	return fmt.Sprintf("%s/%s/%s/%s/%s", repo, environment, application, classification, key)
+// BuildPath returns the Vault KV subpath for one classification tier —
+// all keys sharing that classification live as fields in the single
+// secret at this path, WITHOUT a mount prefix (the caller, vaultwriter,
+// owns and prepends the mount).
+func BuildPath(repo, environment, application, classification string) string {
+	return fmt.Sprintf("%s/%s/%s/%s", repo, environment, application, classification)
 }
