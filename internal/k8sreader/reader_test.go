@@ -65,3 +65,63 @@ func TestFetchSecret_EmptySecret(t *testing.T) {
 		t.Errorf("len(FetchSecret()) = %d, want 0", len(got))
 	}
 }
+
+func TestListNamespaces(t *testing.T) {
+	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "myrepo-staging"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "myrepo-prod"}},
+	)
+	r := New(client)
+
+	got, err := r.ListNamespaces(context.Background())
+	if err != nil {
+		t.Fatalf("ListNamespaces() error = %v", err)
+	}
+
+	want := map[string]bool{"myrepo-staging": true, "myrepo-prod": true}
+	if len(got) != len(want) {
+		t.Fatalf("len(ListNamespaces()) = %d, want %d", len(got), len(want))
+	}
+	for _, ns := range got {
+		if !want[ns] {
+			t.Errorf("unexpected namespace %q in result", ns)
+		}
+	}
+}
+
+func TestListNamespaces_None(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	r := New(client)
+
+	got, err := r.ListNamespaces(context.Background())
+	if err != nil {
+		t.Fatalf("ListNamespaces() error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("len(ListNamespaces()) = %d, want 0", len(got))
+	}
+}
+
+func TestListSecrets(t *testing.T) {
+	client := fake.NewSimpleClientset(
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "backend-secret-variables", Namespace: "myrepo-staging"}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "default-token-abc", Namespace: "myrepo-staging"}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ui-secret-variables", Namespace: "other-namespace"}},
+	)
+	r := New(client)
+
+	got, err := r.ListSecrets(context.Background(), "myrepo-staging")
+	if err != nil {
+		t.Fatalf("ListSecrets() error = %v", err)
+	}
+
+	want := map[string]bool{"backend-secret-variables": true, "default-token-abc": true}
+	if len(got) != len(want) {
+		t.Fatalf("len(ListSecrets()) = %d, want %d; got %v", len(got), len(want), got)
+	}
+	for _, name := range got {
+		if !want[name] {
+			t.Errorf("unexpected secret %q in result", name)
+		}
+	}
+}

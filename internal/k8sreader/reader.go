@@ -36,3 +36,31 @@ func (r *Reader) FetchSecret(ctx context.Context, namespace, name string) (map[s
 	}
 	return result, nil
 }
+
+// ListNamespaces returns every namespace's name in the cluster.
+func (r *Reader) ListNamespaces(ctx context.Context) ([]string, error) {
+	list, err := r.client.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list namespaces: %w", err)
+	}
+
+	names := make([]string, 0, len(list.Items))
+	for _, ns := range list.Items {
+		names = append(names, ns.Name)
+	}
+	return names, nil
+}
+
+// ListSecrets returns every Secret's name in namespace.
+func (r *Reader) ListSecrets(ctx context.Context, namespace string) ([]string, error) {
+	list, err := r.client.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("list secrets in %s: %w", namespace, err)
+	}
+
+	names := make([]string, 0, len(list.Items))
+	for _, s := range list.Items {
+		names = append(names, s.Name)
+	}
+	return names, nil
+}
