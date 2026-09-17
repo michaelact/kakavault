@@ -42,12 +42,15 @@ func TestWrite_OK(t *testing.T) {
 	})
 
 	writer := New(client, "default")
-	err := writer.Write(context.Background(), "myrepo/staging/backend/internal/ENCRYPTION_KEY", "super-secret")
+	err := writer.Write(context.Background(), "myrepo/staging/backend/internal", map[string]string{
+		"ENCRYPTION_KEY": "super-secret",
+		"HASH_SECRET":    "another-secret",
+	})
 	if err != nil {
 		t.Fatalf("Write() error = %v", err)
 	}
 
-	wantPath := "/v1/default/data/myrepo/staging/backend/internal/ENCRYPTION_KEY"
+	wantPath := "/v1/default/data/myrepo/staging/backend/internal"
 	if gotPath != wantPath {
 		t.Errorf("request path = %q, want %q", gotPath, wantPath)
 	}
@@ -56,8 +59,11 @@ func TestWrite_OK(t *testing.T) {
 	if !ok {
 		t.Fatalf("request body has no \"data\" object: %+v", gotBody)
 	}
-	if data["value"] != "super-secret" {
-		t.Errorf("request body data.value = %v, want %q", data["value"], "super-secret")
+	if data["ENCRYPTION_KEY"] != "super-secret" {
+		t.Errorf("request body data.ENCRYPTION_KEY = %v, want %q", data["ENCRYPTION_KEY"], "super-secret")
+	}
+	if data["HASH_SECRET"] != "another-secret" {
+		t.Errorf("request body data.HASH_SECRET = %v, want %q", data["HASH_SECRET"], "another-secret")
 	}
 }
 
@@ -67,22 +73,28 @@ func TestRead_Found(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"data": map[string]interface{}{
-				"data":     map[string]interface{}{"value": "super-secret"},
+				"data": map[string]interface{}{
+					"ENCRYPTION_KEY": "super-secret",
+					"HASH_SECRET":    "another-secret",
+				},
 				"metadata": map[string]interface{}{"version": 1},
 			},
 		})
 	})
 
 	writer := New(client, "default")
-	value, found, err := writer.Read(context.Background(), "myrepo/staging/backend/internal/ENCRYPTION_KEY")
+	values, found, err := writer.Read(context.Background(), "myrepo/staging/backend/internal")
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
 	if !found {
 		t.Fatal("Read() found = false, want true")
 	}
-	if value != "super-secret" {
-		t.Errorf("Read() value = %q, want %q", value, "super-secret")
+	if values["ENCRYPTION_KEY"] != "super-secret" {
+		t.Errorf("values[ENCRYPTION_KEY] = %q, want %q", values["ENCRYPTION_KEY"], "super-secret")
+	}
+	if values["HASH_SECRET"] != "another-secret" {
+		t.Errorf("values[HASH_SECRET] = %q, want %q", values["HASH_SECRET"], "another-secret")
 	}
 }
 
@@ -94,7 +106,7 @@ func TestRead_NotFound(t *testing.T) {
 	})
 
 	writer := New(client, "default")
-	_, found, err := writer.Read(context.Background(), "myrepo/staging/backend/internal/MISSING_KEY")
+	_, found, err := writer.Read(context.Background(), "myrepo/staging/backend/internal")
 	if err != nil {
 		t.Fatalf("Read() error = %v, want nil (not-found is found=false, not an error)", err)
 	}
@@ -110,7 +122,7 @@ func TestWrite_ServerError(t *testing.T) {
 	})
 
 	writer := New(client, "default")
-	err := writer.Write(context.Background(), "myrepo/staging/backend/internal/ENCRYPTION_KEY", "value")
+	err := writer.Write(context.Background(), "myrepo/staging/backend/internal", map[string]string{"KEY": "value"})
 	if err == nil {
 		t.Fatal("Write() error = nil, want an error on a 500 response")
 	}

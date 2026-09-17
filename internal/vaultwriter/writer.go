@@ -1,5 +1,6 @@
-// Package vaultwriter writes and reads single keys against a Vault KV-v2
-// mount, one Vault secret per key (value shape {"value": "..."}).
+// Package vaultwriter writes and reads a classification tier's Vault
+// KV-v2 secret — one secret per tier, holding every key sharing that
+// classification as top-level fields.
 package vaultwriter
 
 import (
@@ -23,38 +24,45 @@ func New(client *vaultapi.Client, mount string) *Writer {
 	return &Writer{client: client, mount: mount}
 }
 
-// Write puts value at subpath (relative to the mount) as a KV-v2 secret
-// with a single "value" field.
-func (w *Writer) Write(ctx context.Context, subpath, value string) error {
-	_, err := w.client.KVv2(w.mount).Put(ctx, subpath, map[string]interface{}{
-		"value": value,
-	})
+// Write puts values at subpath (relative to the mount) as a single KV-v2
+// secret, one field per map entry.
+func (w *Writer) Write(ctx context.Context, subpath string, values map[string]string) error {
+	data := make(map[string]interface{}, len(values))
+	for k, v := range values {
+		data[k] = v
+	}
+
+	_, err := w.client.KVv2(w.mount).Put(ctx, subpath, data)
 	if err != nil {
 		return fmt.Errorf("write %s/%s: %w", w.mount, subpath, err)
 	}
 	return nil
 }
 
-// Read fetches subpath's "value" field. found is false (with a nil error)
-// when the secret doesn't exist — that's an expected outcome for
-// verification/dry-run flows, not a failure.
-func (w *Writer) Read(ctx context.Context, subpath string) (value string, found bool, err error) {
+// Read fetches subpath's full secret document. found is false (with a
+// nil error) when the secret doesn't exist — that's an expected outcome
+// for verification/dry-run flows, not a failure.
+func (w *Writer) Read(ctx context.Context, subpath string) (values map[string]string, found bool, err error) {
 	secret, err := w.client.KVv2(w.mount).Get(ctx, subpath)
 	if err != nil {
 		if isNotFound(err) {
-			return "", false, nil
+			return nil, false, nil
 		}
-		return "", false, fmt.Errorf("read %s/%s: %w", w.mount, subpath, err)
+		return nil, false, fmt.Errorf("read %s/%s: %w", w.mount, subpath, err)
 	}
 	if secret == nil || secret.Data == nil {
-		return "", false, nil
+		return nil, false, nil
 	}
 
-	v, ok := secret.Data["value"].(string)
-	if !ok {
-		return "", false, fmt.Errorf("read %s/%s: \"value\" field missing or not a string", w.mount, subpath)
+	values = make(map[string]string, len(secret.Data))
+	for k, v := range secret.Data {
+		s, ok := v.(string)
+		if !ok {
+			return nil, false, fmt.Errorf("read %s/%s: field %q is not a string", w.mount, subpath, k)
+		}
+		values[k] = s
 	}
-	return v, true, nil
+	return values, true, nil
 }
 
 func isNotFound(err error) bool {
