@@ -87,20 +87,21 @@ func TestMigrate_EndToEnd_RealVault(t *testing.T) {
 	}
 
 	// Confirm directly against Vault, independent of Apply's own
-	// read-back, that both keys landed at the expected paths.
-	value, found, err := writer.Read(context.Background(), "myrepo/staging/backend/third-party/OPENAI_API_KEY")
+	// read-back, that both keys landed in their classification tier's
+	// shared secret.
+	thirdParty, found, err := writer.Read(context.Background(), "myrepo/staging/backend/third-party")
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
-	if !found || value != "sk-integration-test" {
-		t.Errorf("OPENAI_API_KEY: found=%v value=%q, want found=true value=%q", found, value, "sk-integration-test")
+	if !found || thirdParty["OPENAI_API_KEY"] != "sk-integration-test" {
+		t.Errorf("third-party: found=%v OPENAI_API_KEY=%q, want found=true value=%q", found, thirdParty["OPENAI_API_KEY"], "sk-integration-test")
 	}
 
-	value, found, err = writer.Read(context.Background(), "myrepo/staging/backend/internal/ENCRYPTION_KEY")
+	internal, found, err := writer.Read(context.Background(), "myrepo/staging/backend/internal")
 	if err != nil {
 		t.Fatalf("Read() error = %v", err)
 	}
-	if !found || value != "integration-enc-value" {
-		t.Errorf("ENCRYPTION_KEY: found=%v value=%q, want found=true value=%q", found, value, "integration-enc-value")
+	if !found || internal["ENCRYPTION_KEY"] != "integration-enc-value" {
+		t.Errorf("internal: found=%v ENCRYPTION_KEY=%q, want found=true value=%q", found, internal["ENCRYPTION_KEY"], "integration-enc-value")
 	}
 }

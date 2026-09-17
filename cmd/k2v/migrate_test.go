@@ -178,7 +178,7 @@ func TestRunMigrate_All_DiscoversAndMigratesEachTarget(t *testing.T) {
 	}
 
 	if len(writer.data) != 2 {
-		t.Errorf("writer.data has %d entries, want 2 (one per target's single key)", len(writer.data))
+		t.Errorf("writer.data has %d entries, want 2 (one classification group per target)", len(writer.data))
 	}
 }
 
