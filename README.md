@@ -48,8 +48,12 @@ See `examples/config.example.yaml` for a config template.
 ## Path convention
 
 ```
-<mount>/<repo>/<environment>/<application>/<classification>/<KEY>
+<mount>/<repo>/<environment>/<application>/<classification>
 ```
+
+One Vault secret per classification tier — every key sharing that
+classification (e.g. all `internal` keys, all `third-party` keys) lives
+as a field in that one secret, not as its own separate Vault secret.
 
 `repo`/`environment` come from parsing the namespace name; `application`
 comes from parsing the Secret name — both via configurable regexes, so
