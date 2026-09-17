@@ -203,3 +203,74 @@ func TestRunMigrate_All_NoMatches_ReturnsZero(t *testing.T) {
 		t.Errorf("output should explain nothing matched; got:\n%s", stdout.String())
 	}
 }
+
+func TestRunMigrate_NamespaceOnly_DiscoversSecretsInThatNamespace(t *testing.T) {
+	configPath := writeTestConfig(t)
+	var stdout, stderr bytes.Buffer
+	writer := newFakeVaultWriter()
+
+	code := runMigrate(migrateArgs{
+		namespace:  "myrepo-staging",
+		configPath: configPath,
+		apply:      true,
+	}, fakeK8sClientMultiNamespace(t), writer, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("runMigrate() exit code = %d, want 0; stderr:\n%s", code, stderr.String())
+	}
+
+	out := stdout.String()
+	if !strings.Contains(out, "myrepo-staging / backend-secret-variables") {
+		t.Errorf("output should show the staging target header; got:\n%s", out)
+	}
+	if strings.Contains(out, "myrepo-prod") {
+		t.Errorf("namespace-only mode must not touch other namespaces; got:\n%s", out)
+	}
+	if strings.Contains(out, "default-token-abc") {
+		t.Errorf("non-matching Secret name must be skipped; got:\n%s", out)
+	}
+
+	if len(writer.data) != 1 {
+		t.Errorf("writer.data has %d entries, want 1", len(writer.data))
+	}
+}
+
+func TestRunMigrate_NamespaceOnly_NamespaceMismatch_ReturnsNonZero(t *testing.T) {
+	configPath := writeTestConfig(t)
+	var stdout, stderr bytes.Buffer
+
+	code := runMigrate(migrateArgs{
+		namespace:  "badnamespace",
+		configPath: configPath,
+		apply:      false,
+	}, fakeK8sClientMultiNamespace(t), nil, &stdout, &stderr)
+
+	if code == 0 {
+		t.Fatal("runMigrate() exit code = 0, want non-zero for a namespace pattern mismatch")
+	}
+	if !strings.Contains(stderr.String(), "does not match") {
+		t.Errorf("stderr should explain the mismatch; got:\n%s", stderr.String())
+	}
+}
+
+func TestRunMigrate_NamespaceOnly_NoMatchingSecrets_ReturnsZero(t *testing.T) {
+	configPath := writeTestConfig(t)
+	var stdout, stderr bytes.Buffer
+
+	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "empty-staging"}},
+	)
+
+	code := runMigrate(migrateArgs{
+		namespace:  "empty-staging",
+		configPath: configPath,
+		apply:      false,
+	}, client, nil, &stdout, &stderr)
+
+	if code != 0 {
+		t.Fatalf("runMigrate() exit code = %d, want 0 for zero matches; stderr:\n%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "nothing to do") {
+		t.Errorf("output should explain nothing matched; got:\n%s", stdout.String())
+	}
+}

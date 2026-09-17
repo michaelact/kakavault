@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 
 	"github.com/michaelact/k2v/internal/config"
 	"github.com/michaelact/k2v/internal/discover"
@@ -27,6 +28,11 @@ type migrateArgs struct {
 // already-constructed k8s client and (when applying) a VaultWriter, so
 // tests never need a real cluster or Vault server. main() builds the
 // real ones and calls this.
+//
+// Three modes, chosen by which of args.all/namespace/secretName are set:
+//   - all:                       discover every namespace/Secret pair in the cluster
+//   - namespace, no secretName:  discover every matching Secret in that one namespace
+//   - namespace + secretName:    a single, explicit target
 func runMigrate(args migrateArgs, k8sClient kubernetes.Interface, vaultWriter migrate.VaultWriter, stdout, stderr io.Writer) int {
 	cfg, err := config.Load(args.configPath)
 	if err != nil {
@@ -39,43 +45,66 @@ func runMigrate(args migrateArgs, k8sClient kubernetes.Interface, vaultWriter mi
 	}
 
 	reader := k8sreader.New(k8sClient)
+	ctx := context.Background()
 
-	if args.all {
-		return runMigrateAll(context.Background(), cfg, reader, vaultWriter, args.apply, stdout, stderr)
-	}
+	switch {
+	case args.all:
+		targets, err := discover.Find(ctx, reader, cfg.NamespacePattern, cfg.SecretNamePattern)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		return runTargets(ctx, cfg, reader, vaultWriter, targets, args.apply, stdout, stderr)
 
-	// Validate the namespace/secret-name patterns before touching the
-	// cluster at all — a pattern mismatch is a config problem, not
-	// something a k8s API failure should mask.
-	if _, err := pathresolver.Resolve(cfg.NamespacePattern, cfg.SecretNamePattern, args.namespace, args.secretName); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
+	case args.secretName == "":
+		// Namespace given, no specific Secret — discover every matching
+		// Secret in just that namespace. Validate the namespace itself
+		// against namespace_pattern first, same "fail before touching the
+		// cluster" reasoning as the single-target path below.
+		nsRe, err := regexp.Compile(cfg.NamespacePattern)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		if !nsRe.MatchString(args.namespace) {
+			fmt.Fprintf(stderr, "error: namespace %q does not match namespace_pattern %q\n", args.namespace, cfg.NamespacePattern)
+			return 1
+		}
 
-	failed, err := runOneTarget(context.Background(), cfg, reader, vaultWriter, args.namespace, args.secretName, args.apply, stdout)
-	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
+		targets, err := discover.FindInNamespace(ctx, reader, args.namespace, cfg.SecretNamePattern)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		return runTargets(ctx, cfg, reader, vaultWriter, targets, args.apply, stdout, stderr)
+
+	default:
+		// Validate the namespace/secret-name patterns before touching the
+		// cluster at all — a pattern mismatch is a config problem, not
+		// something a k8s API failure should mask.
+		if _, err := pathresolver.Resolve(cfg.NamespacePattern, cfg.SecretNamePattern, args.namespace, args.secretName); err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+
+		failed, err := runOneTarget(ctx, cfg, reader, vaultWriter, args.namespace, args.secretName, args.apply, stdout)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		if failed > 0 {
+			fmt.Fprintf(stderr, "\n%d key(s) failed to migrate — see table above.\n", failed)
+			return 1
+		}
+		return 0
 	}
-	if failed > 0 {
-		fmt.Fprintf(stderr, "\n%d key(s) failed to migrate — see table above.\n", failed)
-		return 1
-	}
-	return 0
 }
 
-// runMigrateAll discovers every (namespace, Secret) pair matching cfg's
-// patterns, then runs each through the same logic as a single --namespace/
-// --secret invocation, printing one header + table per target.
-func runMigrateAll(ctx context.Context, cfg *config.Config, reader *k8sreader.Reader, vaultWriter migrate.VaultWriter, apply bool, stdout, stderr io.Writer) int {
-	targets, err := discover.Find(ctx, reader, cfg.NamespacePattern, cfg.SecretNamePattern)
-	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-
+// runTargets runs each discovered target through runOneTarget, printing a
+// header + table per target. Shared by --all and namespace-only discovery.
+func runTargets(ctx context.Context, cfg *config.Config, reader *k8sreader.Reader, vaultWriter migrate.VaultWriter, targets []discover.Target, apply bool, stdout, stderr io.Writer) int {
 	if len(targets) == 0 {
-		fmt.Fprintln(stdout, "No namespace/Secret pairs matched namespace_pattern and secret_name_pattern — nothing to do.")
+		fmt.Fprintln(stdout, "No matching Secret(s) found — nothing to do.")
 		return 0
 	}
 

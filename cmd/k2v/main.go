@@ -22,7 +22,8 @@ func main() {
 func run(args []string) int {
 	if len(args) == 0 || args[0] != "migrate" {
 		fmt.Fprintln(os.Stderr, "usage: k2v migrate --namespace <ns> --secret <name> --config <path> [--apply] [--kubeconfig <path>]")
-		fmt.Fprintln(os.Stderr, "   or: k2v migrate --all --config <path> [--apply] [--kubeconfig <path>]")
+		fmt.Fprintln(os.Stderr, "   or: k2v migrate --namespace <ns> --config <path> [--apply] [--kubeconfig <path>]  (every matching Secret in that namespace)")
+		fmt.Fprintln(os.Stderr, "   or: k2v migrate --all --config <path> [--apply] [--kubeconfig <path>]             (every matching namespace/Secret in the cluster)")
 		return 1
 	}
 
@@ -39,13 +40,18 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, "error: --config is required")
 		return 1
 	}
-	if *all && (*namespace != "" || *secretName != "") {
-		fmt.Fprintln(os.Stderr, "error: --all can't be combined with --namespace/--secret")
-		return 1
-	}
-	if !*all && (*namespace == "" || *secretName == "") {
-		fmt.Fprintln(os.Stderr, "error: --namespace and --secret are required unless --all is set")
-		return 1
+	if *all {
+		if *namespace != "" || *secretName != "" {
+			fmt.Fprintln(os.Stderr, "error: --all can't be combined with --namespace/--secret")
+			return 1
+		}
+	} else {
+		if *namespace == "" {
+			fmt.Fprintln(os.Stderr, "error: --namespace is required unless --all is set")
+			return 1
+		}
+		// --secret is optional: if omitted, every Secret in --namespace
+		// matching secret_name_pattern is migrated.
 	}
 
 	k8sClient, err := buildK8sClient(*kubeconfig)
