@@ -8,6 +8,9 @@
 *.so
 *.dylib
 
+# Built k2v binary
+/k2v
+
 # Test binary, built with `go test -c`
 *.test
 
