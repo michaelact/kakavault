@@ -2,7 +2,7 @@ package main
 
 import "context"
 
-// fakeVaultWriter is an in-memory migrate.VaultWriter for cmd/k2v's own
+// fakeVaultWriter is an in-memory migrate.VaultWriter for cmd/kakavault's own
 // tests — separate from internal/migrate's fakeWriter since Go test
 // helpers aren't exported across packages. data is keyed by subpath,
 // each value holding every key written to that classification tier.

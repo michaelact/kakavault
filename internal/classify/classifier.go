@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/michaelact/k2v/internal/config"
+	"github.com/michaelact/kakavault/internal/config"
 )
 
 type compiledRule struct {

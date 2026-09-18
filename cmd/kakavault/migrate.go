@@ -6,12 +6,12 @@ import (
 	"io"
 	"regexp"
 
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/discover"
-	"github.com/michaelact/k2v/internal/k8sreader"
-	"github.com/michaelact/k2v/internal/migrate"
-	"github.com/michaelact/k2v/internal/pathresolver"
-	"github.com/michaelact/k2v/internal/report"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/discover"
+	"github.com/michaelact/kakavault/internal/k8sreader"
+	"github.com/michaelact/kakavault/internal/migrate"
+	"github.com/michaelact/kakavault/internal/pathresolver"
+	"github.com/michaelact/kakavault/internal/report"
 	"k8s.io/client-go/kubernetes"
 )
 

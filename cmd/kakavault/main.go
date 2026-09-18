@@ -1,4 +1,4 @@
-// Command k2v migrates a Kubernetes Secret's keys into HashiCorp Vault,
+// Command kakavault migrates a Kubernetes Secret's keys into HashiCorp Vault,
 // classified by config-driven rules. See docs/superpowers/specs for the
 // full design.
 package main
@@ -9,8 +9,8 @@ import (
 	"os"
 
 	vaultapi "github.com/hashicorp/vault/api"
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/vaultwriter"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/vaultwriter"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -21,16 +21,16 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 || args[0] != "migrate" {
-		fmt.Fprintln(os.Stderr, "usage: k2v migrate --namespace <ns> --secret <name> --config <path> [--apply] [--kubeconfig <path>]")
-		fmt.Fprintln(os.Stderr, "   or: k2v migrate --namespace <ns> --config <path> [--apply] [--kubeconfig <path>]  (every matching Secret in that namespace)")
-		fmt.Fprintln(os.Stderr, "   or: k2v migrate --all --config <path> [--apply] [--kubeconfig <path>]             (every matching namespace/Secret in the cluster)")
+		fmt.Fprintln(os.Stderr, "usage: kakavault migrate --namespace <ns> --secret <name> --config <path> [--apply] [--kubeconfig <path>]")
+		fmt.Fprintln(os.Stderr, "   or: kakavault migrate --namespace <ns> --config <path> [--apply] [--kubeconfig <path>]  (every matching Secret in that namespace)")
+		fmt.Fprintln(os.Stderr, "   or: kakavault migrate --all --config <path> [--apply] [--kubeconfig <path>]             (every matching namespace/Secret in the cluster)")
 		return 1
 	}
 
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
 	namespace := fs.String("namespace", "", "Kubernetes namespace containing the Secret")
 	secretName := fs.String("secret", "", "Name of the Kubernetes Secret to migrate")
-	configPath := fs.String("config", "", "Path to the k2v config YAML file")
+	configPath := fs.String("config", "", "Path to the kakavault config YAML file")
 	apply := fs.Bool("apply", false, "Perform the writes (default is dry-run)")
 	all := fs.Bool("all", false, "Discover every namespace/Secret pair matching the config's patterns, instead of a single --namespace/--secret")
 	kubeconfig := fs.String("kubeconfig", "", "Path to kubeconfig (defaults to ~/.kube/config)")

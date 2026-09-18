@@ -1,4 +1,4 @@
-module github.com/michaelact/k2v
+module github.com/michaelact/kakavault
 
 go 1.25.0
 

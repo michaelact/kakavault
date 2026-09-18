@@ -17,7 +17,7 @@ type Reader struct {
 }
 
 // New wraps an existing Kubernetes client. Building that client (from a
-// kubeconfig or in-cluster config) is the caller's job — cmd/k2v does it.
+// kubeconfig or in-cluster config) is the caller's job — cmd/kakavault does it.
 func New(client kubernetes.Interface) *Reader {
 	return &Reader{client: client}
 }

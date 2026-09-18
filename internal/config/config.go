@@ -28,7 +28,7 @@ type VaultConfig struct {
 	KVVersion int    `yaml:"kv_version"`
 }
 
-// Config is the full k2v configuration, loaded from a single YAML file.
+// Config is the full kakavault configuration, loaded from a single YAML file.
 type Config struct {
 	NamespacePattern  string         `yaml:"namespace_pattern"`
 	SecretNamePattern string         `yaml:"secret_name_pattern"`

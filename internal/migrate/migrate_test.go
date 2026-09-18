@@ -6,7 +6,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/michaelact/k2v/internal/config"
+	"github.com/michaelact/kakavault/internal/config"
 )
 
 func testConfig() *config.Config {

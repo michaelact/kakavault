@@ -1,14 +1,14 @@
-# k2v CLI Implementation Plan
+# kakavault CLI Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the `k2v migrate` CLI — a one-shot Go tool that reads a Kubernetes Secret, classifies each key (internal/third-party) via config-driven rules, and writes each key to its own path in HashiCorp Vault's KV-v2 store.
+**Goal:** Build the `kakavault migrate` CLI — a one-shot Go tool that reads a Kubernetes Secret, classifies each key (internal/third-party) via config-driven rules, and writes each key to its own path in HashiCorp Vault's KV-v2 store.
 
-**Architecture:** Single Go binary, no daemon/CRD/in-cluster component. A linear pipeline of small, independently-testable packages: `config` (load/validate YAML) → `k8sreader` (fetch the Secret via client-go) → `pathresolver` (parse namespace/secret name into repo/environment/application, build per-key paths) → `classify` (rule+override matching) → `migrate` (orchestrates the above into a plan, then applies it against Vault) → `vaultwriter` (KV-v2 write/read-back via the official Vault SDK) → `report` (prints the result table). `cmd/k2v` wires real implementations together behind two interfaces (`migrate.SecretFetcher`, `migrate.VaultWriter`) so `migrate`'s own tests use fakes instead of a live cluster/Vault.
+**Architecture:** Single Go binary, no daemon/CRD/in-cluster component. A linear pipeline of small, independently-testable packages: `config` (load/validate YAML) → `k8sreader` (fetch the Secret via client-go) → `pathresolver` (parse namespace/secret name into repo/environment/application, build per-key paths) → `classify` (rule+override matching) → `migrate` (orchestrates the above into a plan, then applies it against Vault) → `vaultwriter` (KV-v2 write/read-back via the official Vault SDK) → `report` (prints the result table). `cmd/kakavault` wires real implementations together behind two interfaces (`migrate.SecretFetcher`, `migrate.VaultWriter`) so `migrate`'s own tests use fakes instead of a live cluster/Vault.
 
 **Tech Stack:** Go 1.22, `k8s.io/client-go` (+ `k8s.io/api`, `k8s.io/apimachinery`), `github.com/hashicorp/vault/api`, `gopkg.in/yaml.v3`. Stdlib `flag` for CLI parsing (single `migrate` command — no need for a CLI framework yet). No test-assertion library beyond stdlib `testing`.
 
-**Spec:** `docs/superpowers/specs/2026-09-17-k2v-design.md`
+**Spec:** `docs/superpowers/specs/2026-09-17-kakavault-design.md`
 
 ## Global Constraints
 
@@ -25,14 +25,14 @@
 ## File Structure
 
 ```
-k2v/
+kakavault/
 ├── go.mod
 ├── go.sum
 ├── README.md
 ├── .gitignore
 ├── examples/
 │   └── config.example.yaml
-├── cmd/k2v/
+├── cmd/kakavault/
 │   ├── main.go
 │   └── migrate.go
 └── internal/
@@ -75,8 +75,8 @@ k2v/
 - [ ] **Step 1: Init the Go module**
 
 ```bash
-cd /home/michaelact/GDPLabs/k2v
-go mod init github.com/michaelact/k2v
+cd /home/michaelact/GDPLabs/kakavault
+go mod init github.com/michaelact/kakavault
 go get gopkg.in/yaml.v3@v3.0.1
 ```
 
@@ -251,7 +251,7 @@ type VaultConfig struct {
 	KVVersion int    `yaml:"kv_version"`
 }
 
-// Config is the full k2v configuration, loaded from a single YAML file.
+// Config is the full kakavault configuration, loaded from a single YAML file.
 type Config struct {
 	NamespacePattern  string          `yaml:"namespace_pattern"`
 	SecretNamePattern string          `yaml:"secret_name_pattern"`
@@ -342,7 +342,7 @@ package classify
 import (
 	"testing"
 
-	"github.com/michaelact/k2v/internal/config"
+	"github.com/michaelact/kakavault/internal/config"
 )
 
 func testConfig() config.Classification {
@@ -458,7 +458,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/michaelact/k2v/internal/config"
+	"github.com/michaelact/kakavault/internal/config"
 )
 
 type compiledRule struct {
@@ -708,7 +708,7 @@ git commit -m "feat: add namespace/secret-name path resolver"
 - [ ] **Step 1: Add the k8s client-go dependency**
 
 ```bash
-cd /home/michaelact/GDPLabs/k2v
+cd /home/michaelact/GDPLabs/kakavault
 go get k8s.io/client-go@v0.31.0
 go get k8s.io/api@v0.31.0
 go get k8s.io/apimachinery@v0.31.0
@@ -817,7 +817,7 @@ type Reader struct {
 }
 
 // New wraps an existing Kubernetes client. Building that client (from a
-// kubeconfig or in-cluster config) is the caller's job — cmd/k2v does it.
+// kubeconfig or in-cluster config) is the caller's job — cmd/kakavault does it.
 func New(client kubernetes.Interface) *Reader {
 	return &Reader{client: client}
 }
@@ -864,7 +864,7 @@ git commit -m "feat: add Kubernetes Secret reader"
 - [ ] **Step 1: Add the Vault SDK dependency**
 
 ```bash
-cd /home/michaelact/GDPLabs/k2v
+cd /home/michaelact/GDPLabs/kakavault
 go get github.com/hashicorp/vault/api@v1.15.0
 ```
 
@@ -1103,7 +1103,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/michaelact/k2v/internal/config"
+	"github.com/michaelact/kakavault/internal/config"
 )
 
 func testConfig() *config.Config {
@@ -1281,9 +1281,9 @@ package migrate
 import (
 	"context"
 
-	"github.com/michaelact/k2v/internal/classify"
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/pathresolver"
+	"github.com/michaelact/kakavault/internal/classify"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/pathresolver"
 )
 
 // PlannedItem is one Secret key's classification and destination path,
@@ -1400,7 +1400,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/michaelact/k2v/internal/migrate"
+	"github.com/michaelact/kakavault/internal/migrate"
 )
 
 func TestPrintPlanned(t *testing.T) {
@@ -1472,7 +1472,7 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"github.com/michaelact/k2v/internal/migrate"
+	"github.com/michaelact/kakavault/internal/migrate"
 )
 
 // PrintPlanned prints the dry-run table: what WOULD be written.
@@ -1520,21 +1520,21 @@ git commit -m "feat: add result table reporter"
 
 ---
 
-### Task 8: CLI wiring (cmd/k2v)
+### Task 8: CLI wiring (cmd/kakavault)
 
 **Files:**
-- Create: `cmd/k2v/main.go`
-- Create: `cmd/k2v/migrate.go`
+- Create: `cmd/kakavault/main.go`
+- Create: `cmd/kakavault/migrate.go`
 
 **Interfaces:**
 - Consumes: everything from Tasks 1-7
-- Produces: the `k2v` binary; `runMigrate(args []string, stdout, stderr io.Writer) int` (exit code), tested directly rather than by shelling out to the built binary
+- Produces: the `kakavault` binary; `runMigrate(args []string, stdout, stderr io.Writer) int` (exit code), tested directly rather than by shelling out to the built binary
 
 This task's tests exercise `runMigrate` in-process (fast, no subprocess), using the same `fakeWriter`-style pattern as Task 6 plus a `k8s.io/client-go/kubernetes/fake` clientset — so there's no dependency on a live cluster or Vault here either. The real `kubernetes.Interface`/`*vaultapi.Client` construction (from kubeconfig / env vars) lives in `main.go` and is exercised only by Task 9's integration test and manual runs.
 
 - [ ] **Step 1: Write the failing test**
 
-Create `cmd/k2v/migrate_test.go`:
+Create `cmd/kakavault/migrate_test.go`:
 
 ```go
 package main
@@ -1671,12 +1671,12 @@ func TestRunMigrate_Apply_UsesVaultWriter(t *testing.T) {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `go test ./cmd/k2v/... -v`
+Run: `go test ./cmd/kakavault/... -v`
 Expected: FAIL — `runMigrate`, `migrateArgs`, `writeFile`, `newFakeVaultWriter` undefined
 
 - [ ] **Step 3: Write the implementation**
 
-Create `cmd/k2v/migrate.go`:
+Create `cmd/kakavault/migrate.go`:
 
 ```go
 package main
@@ -1687,10 +1687,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/k8sreader"
-	"github.com/michaelact/k2v/internal/migrate"
-	"github.com/michaelact/k2v/internal/report"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/k8sreader"
+	"github.com/michaelact/kakavault/internal/migrate"
+	"github.com/michaelact/kakavault/internal/report"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -1750,10 +1750,10 @@ func writeFile(path, contents string) error {
 }
 ```
 
-Create `cmd/k2v/main.go`:
+Create `cmd/kakavault/main.go`:
 
 ```go
-// Command k2v migrates a Kubernetes Secret's keys into HashiCorp Vault,
+// Command kakavault migrates a Kubernetes Secret's keys into HashiCorp Vault,
 // classified by config-driven rules. See docs/superpowers/specs for the
 // full design.
 package main
@@ -1764,7 +1764,7 @@ import (
 	"os"
 
 	vaultapi "github.com/hashicorp/vault/api"
-	"github.com/michaelact/k2v/internal/vaultwriter"
+	"github.com/michaelact/kakavault/internal/vaultwriter"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -1775,14 +1775,14 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 || args[0] != "migrate" {
-		fmt.Fprintln(os.Stderr, "usage: k2v migrate --namespace <ns> --secret <name> --config <path> [--apply] [--kubeconfig <path>]")
+		fmt.Fprintln(os.Stderr, "usage: kakavault migrate --namespace <ns> --secret <name> --config <path> [--apply] [--kubeconfig <path>]")
 		return 1
 	}
 
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
 	namespace := fs.String("namespace", "", "Kubernetes namespace containing the Secret")
 	secretName := fs.String("secret", "", "Name of the Kubernetes Secret to migrate")
-	configPath := fs.String("config", "", "Path to the k2v config YAML file")
+	configPath := fs.String("config", "", "Path to the kakavault config YAML file")
 	apply := fs.Bool("apply", false, "Perform the writes (default is dry-run)")
 	kubeconfig := fs.String("kubeconfig", "", "Path to kubeconfig (defaults to in-cluster config, then ~/.kube/config)")
 	fs.Parse(args[1:])
@@ -1849,7 +1849,7 @@ func mountFromConfig(path string) string {
 
 - [ ] **Step 4: Fix the mountFromConfig helper and missing imports**
 
-`mountFromConfig` above references an undefined `configLoadOrDefault` and `main.go` is missing the `k8s.io/client-go/rest` import. Replace the bottom of `cmd/k2v/main.go` (from `func buildK8sClient` onward) with:
+`mountFromConfig` above references an undefined `configLoadOrDefault` and `main.go` is missing the `k8s.io/client-go/rest` import. Replace the bottom of `cmd/kakavault/main.go` (from `func buildK8sClient` onward) with:
 
 ```go
 func buildK8sClient(kubeconfigPath string) (kubernetes.Interface, error) {
@@ -1878,7 +1878,7 @@ func mountFromConfig(path string) string {
 }
 ```
 
-And update the import block at the top of `cmd/k2v/main.go` to:
+And update the import block at the top of `cmd/kakavault/main.go` to:
 
 ```go
 import (
@@ -1887,8 +1887,8 @@ import (
 	"os"
 
 	vaultapi "github.com/hashicorp/vault/api"
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/vaultwriter"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/vaultwriter"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -1896,14 +1896,14 @@ import (
 
 - [ ] **Step 5: Add the fake Vault writer test helper**
 
-Create `cmd/k2v/vaultwriter_fake_test.go`:
+Create `cmd/kakavault/vaultwriter_fake_test.go`:
 
 ```go
 package main
 
 import "context"
 
-// fakeVaultWriter is an in-memory migrate.VaultWriter for cmd/k2v's own
+// fakeVaultWriter is an in-memory migrate.VaultWriter for cmd/kakavault's own
 // tests — separate from internal/migrate's fakeWriter since Go test
 // helpers aren't exported across packages.
 type fakeVaultWriter struct {
@@ -1927,7 +1927,7 @@ func (f *fakeVaultWriter) Read(ctx context.Context, subpath string) (string, boo
 
 - [ ] **Step 6: Run the test to verify it passes**
 
-Run: `go build ./... && go test ./cmd/k2v/... -v`
+Run: `go build ./... && go test ./cmd/kakavault/... -v`
 Expected: PASS (all 4 tests in migrate_test.go)
 
 - [ ] **Step 7: Run the full test suite**
@@ -1938,8 +1938,8 @@ Expected: PASS — every package from Tasks 1-8
 - [ ] **Step 8: Commit**
 
 ```bash
-git add cmd/k2v
-git commit -m "feat: wire up k2v migrate CLI"
+git add cmd/kakavault
+git commit -m "feat: wire up kakavault migrate CLI"
 ```
 
 ---
@@ -1971,9 +1971,9 @@ import (
 	"time"
 
 	vaultapi "github.com/hashicorp/vault/api"
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/migrate"
-	"github.com/michaelact/k2v/internal/vaultwriter"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/migrate"
+	"github.com/michaelact/kakavault/internal/vaultwriter"
 )
 
 const (
@@ -2096,7 +2096,7 @@ git commit -m "test: add end-to-end integration test against a real Vault dev se
 Create `examples/config.example.yaml`:
 
 ```yaml
-# Example k2v config. Copy this, then adjust the two patterns and the
+# Example kakavault config. Copy this, then adjust the two patterns and the
 # classification rules to match your own naming conventions.
 
 # Named capture groups "repo" and "environment" are required.
@@ -2134,14 +2134,14 @@ classification:
 Create `README.md`:
 
 ```markdown
-# k2v
+# kakavault
 
 Migrate a Kubernetes `Secret`'s keys into HashiCorp Vault's KV-v2 store,
 one Vault secret per key, split by a config-driven classification
 (e.g. `internal` vs `third-party`).
 
 This is a one-shot migration tool, not an ongoing sync — see
-`docs/superpowers/specs/2026-09-17-k2v-design.md` for the full design
+`docs/superpowers/specs/2026-09-17-kakavault-design.md` for the full design
 and why (short version: once an app's secrets are in Vault, its
 manifests should read from Vault directly and the K8s Secret goes
 away).
@@ -2149,7 +2149,7 @@ away).
 ## Install
 
 ```bash
-go install github.com/michaelact/k2v/cmd/k2v@latest
+go install github.com/michaelact/kakavault/cmd/kakavault@latest
 ```
 
 ## Usage
@@ -2159,10 +2159,10 @@ export VAULT_ADDR=https://vault.example.com:8200
 export VAULT_TOKEN=...
 
 # Dry run — prints what would be written, writes nothing
-k2v migrate --namespace myrepo-staging --secret backend-secret-variables --config config.yaml
+kakavault migrate --namespace myrepo-staging --secret backend-secret-variables --config config.yaml
 
 # Actually write to Vault, then read back and verify each key
-k2v migrate --namespace myrepo-staging --secret backend-secret-variables --config config.yaml --apply
+kakavault migrate --namespace myrepo-staging --secret backend-secret-variables --config config.yaml --apply
 ```
 
 See `examples/config.example.yaml` for a config template.
@@ -2192,7 +2192,7 @@ go test -tags=integration ./...      # + end-to-end test, needs `vault` on PATH
 Create `.gitignore`:
 
 ```
-/k2v
+/kakavault
 *.test
 ```
 

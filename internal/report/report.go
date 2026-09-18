@@ -7,7 +7,7 @@ import (
 	"io"
 	"text/tabwriter"
 
-	"github.com/michaelact/k2v/internal/migrate"
+	"github.com/michaelact/kakavault/internal/migrate"
 )
 
 // PrintPlanned prints the dry-run table: what WOULD be written.

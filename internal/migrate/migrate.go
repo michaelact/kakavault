@@ -7,9 +7,9 @@ package migrate
 import (
 	"context"
 
-	"github.com/michaelact/k2v/internal/classify"
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/pathresolver"
+	"github.com/michaelact/kakavault/internal/classify"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/pathresolver"
 )
 
 // PlannedItem is one Secret key's classification and destination path,

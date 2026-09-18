@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/michaelact/k2v/internal/migrate"
+	"github.com/michaelact/kakavault/internal/migrate"
 )
 
 func TestPrintPlanned(t *testing.T) {

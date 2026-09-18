@@ -3,7 +3,7 @@ package classify
 import (
 	"testing"
 
-	"github.com/michaelact/k2v/internal/config"
+	"github.com/michaelact/kakavault/internal/config"
 )
 
 func testConfig() config.Classification {

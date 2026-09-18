@@ -1,4 +1,4 @@
-# Example k2v config. Copy this, then adjust the two patterns and the
+# Example kakavault config. Copy this, then adjust the two patterns and the
 # classification rules to match your own naming conventions.
 
 # Named capture groups "repo" and "environment" are required.

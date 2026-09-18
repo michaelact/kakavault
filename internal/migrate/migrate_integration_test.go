@@ -10,9 +10,9 @@ import (
 	"time"
 
 	vaultapi "github.com/hashicorp/vault/api"
-	"github.com/michaelact/k2v/internal/config"
-	"github.com/michaelact/k2v/internal/migrate"
-	"github.com/michaelact/k2v/internal/vaultwriter"
+	"github.com/michaelact/kakavault/internal/config"
+	"github.com/michaelact/kakavault/internal/migrate"
+	"github.com/michaelact/kakavault/internal/vaultwriter"
 )
 
 const (

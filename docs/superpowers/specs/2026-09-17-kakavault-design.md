@@ -1,4 +1,4 @@
-# k2v — Design
+# kakavault — Design
 
 ## Problem
 
@@ -68,7 +68,7 @@ service). So classification is config-driven:
 
 ## Architecture
 
-Single Go binary, one command: `k2v migrate`. No server, no
+Single Go binary, one command: `kakavault migrate`. No server, no
 daemon, no CRDs, no in-cluster component.
 
 ```
@@ -120,9 +120,9 @@ classification:
 ## CLI
 
 ```
-k2v migrate --namespace myrepo-staging --secret backend-secret-variables --config config.yaml
-k2v migrate --namespace myrepo-staging --config config.yaml                    # every matching Secret in that namespace
-k2v migrate --all --config config.yaml                                         # every matching namespace/Secret in the cluster
+kakavault migrate --namespace myrepo-staging --secret backend-secret-variables --config config.yaml
+kakavault migrate --namespace myrepo-staging --config config.yaml                    # every matching Secret in that namespace
+kakavault migrate --all --config config.yaml                                         # every matching namespace/Secret in the cluster
 ```
 
 - No `--apply` flag: dry-run, prints the planned table, writes nothing.
